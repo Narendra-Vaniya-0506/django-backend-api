@@ -16,4 +16,7 @@ urlpatterns = [
     # Lesson tracking endpoints
     path('lessons/start/', views.start_lesson, name='start_lesson'),
     path('lessons/complete/', views.complete_lesson, name='complete_lesson'),
+    
+    # Contact endpoint
+    path('contact/', views.contact, name='contact'),
 ]

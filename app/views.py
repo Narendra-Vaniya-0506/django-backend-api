@@ -12,7 +12,8 @@ from rest_framework.authtoken.models import Token
 
 from rest_framework.permissions import AllowAny
 from .serializers import UserProfileSerializer, UserProfileDetailSerializer
-from .models import UserProfile
+from .models import UserProfile, Contact
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -333,4 +334,94 @@ def complete_lesson(request):
         return Response({
             'success': False,
             'error': 'Could not complete lesson.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def contact(request):
+    """
+    Handle contact form submissions and send emails
+    """
+    try:
+        data = request.data
+        name = data.get('name')
+        email = data.get('email')
+        phone = data.get('phone')
+        subject = data.get('subject')
+        message = data.get('message')
+
+        # Validate required fields
+        if not all([name, email, subject, message]):
+            return Response({
+                'success': False,
+                'error': 'Name, email, subject, and message are required fields.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save contact to database
+        contact = Contact.objects.create(
+            name=name,
+            email=email,
+            phone=phone or '',
+            subject=subject,
+            message=message
+        )
+
+        # Send email to admin
+        admin_subject = f"New Contact Form Submission: {subject}"
+        admin_message = f"""
+        New contact form submission received:
+
+        Name: {name}
+        Email: {email}
+        Phone: {phone or 'Not provided'}
+        Subject: {subject}
+        Message: {message}
+
+        Received at: {contact.created_at}
+        """
+
+        send_mail(
+            admin_subject,
+            admin_message,
+            'codeyatra0605@gmail.com',
+            ['codeyatra0605@gmail.com'],
+            fail_silently=False,
+        )
+
+        # Send confirmation email to user
+        user_subject = "Thank you for contacting Code Yatra"
+        user_message = f"""
+        Dear {name},
+
+        Thank you for reaching out to us! We have received your message and will get back to you shortly.
+
+        Here's a summary of your message:
+        Subject: {subject}
+        Message: {message}
+
+        We appreciate your interest in Code Yatra.
+
+        Best regards,
+        Code Yatra Team
+        """
+
+        send_mail(
+            user_subject,
+            user_message,
+            'codeyatra0605@gmail.com',
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({
+            'success': True,
+            'message': 'Contact form submitted successfully. Emails sent.'
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        logger.error(f"Contact form error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': 'Could not process contact form submission.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
