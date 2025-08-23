@@ -414,13 +414,13 @@ def contact(request):
         Thank you for reaching out to us! We have received your message and will get back to you shortly.
 
         Here's a summary of your message:
-        Subject: {subject}
-        Message: {message}
+        - **Subject**: {subject}
+        - **Message**: {message}
 
         We appreciate your interest in Code Yatra.
 
         Best regards,
-        Code Yatra Team
+        The Code Yatra Team
         """
 
         send_mail(
