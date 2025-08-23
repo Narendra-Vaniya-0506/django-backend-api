@@ -358,7 +358,7 @@ def contact(request):
                 'error': 'Name, email, subject, and message are required fields.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save contact to database
+        logger.info(f"Received contact form data: {data}")
         contact = Contact.objects.create(
             name=name,
             email=email,
@@ -367,7 +367,7 @@ def contact(request):
             message=message
         )
 
-        # Send email to admin
+        logger.info(f"Contact entry saved: {contact.id}")
         admin_subject = f"New Contact Form Submission: {subject}"
         admin_message = f"""
         New contact form submission received:

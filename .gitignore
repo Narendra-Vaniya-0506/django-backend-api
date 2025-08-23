@@ -3,6 +3,8 @@ __pycache__/
 
 # Ignore sensitive environment variables
 .env
+EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD
 
 # Ignore virtual environment folder
 venv/
