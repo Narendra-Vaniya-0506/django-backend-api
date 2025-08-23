@@ -389,6 +389,14 @@ def contact(request):
             fail_silently=False,
         )
 
+        # Validate email format
+        if not email or '@' not in email or '.' not in email.split('@')[-1]:
+            logger.error(f"Invalid email address: {email}")
+            return Response({
+                'success': False,
+                'error': 'Invalid email address provided.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Send confirmation email to user
         user_subject = "Thank you for contacting Code Yatra"
         user_message = f"""

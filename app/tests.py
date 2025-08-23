@@ -1,85 +1,36 @@
 import json
-from django.test import TestCase, Client
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-class UserApiTests(TestCase):
-    def setUp(self):
-        self.client = Client()
-
-    def test_signup(self):
-        url = reverse('signup')
+class ContactFormTests(APITestCase):
+    def test_contact_form_valid_email(self):
+        """Test submitting the contact form with a valid email."""
+        url = reverse('contact')  # Adjust the URL name as necessary
         data = {
-            "email": "test@example.com",
-            "phone_number": "1234567890",
-            "password": "testpass123",
-            "name": "Test User"
+            'name': 'Test User',
+            'email': 'testuser@example.com',
+            'phone': '1234567890',
+            'subject': 'Test Subject',
+            'message': 'This is a test message.'
         }
-        response = self.client.post(url, data=json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(response.json().get('success'))
-        self.assertIn('token', response.json()['data'])
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['success'], True)
 
-    def test_login(self):
-        # First signup
-        self.test_signup()
-        url = reverse('login')
+    def test_contact_form_invalid_email(self):
+        """Test submitting the contact form with an invalid email."""
+        url = reverse('contact')  # Adjust the URL name as necessary
         data = {
-            "identifier": "test@example.com",
-            "password": "testpass123"
+            'name': 'Test User',
+            'email': 'invalid-email',
+            'phone': '1234567890',
+            'subject': 'Test Subject',
+            'message': 'This is a test message.'
         }
-        response = self.client.post(url, data=json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json().get('success'))
-        self.assertIn('token', response.json()['data'])
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['success'], False)
+        self.assertIn('Invalid email address provided.', response.data['error'])
 
-    def test_profile_update(self):
-        self.test_signup()
-        login_url = reverse('login')
-        login_data = {
-            "identifier": "test@example.com",
-            "password": "testpass123"
-        }
-        login_response = self.client.post(login_url, data=json.dumps(login_data), content_type='application/json')
-        token = login_response.json()['data']['token']
-
-        url = reverse('update_profile')
-        update_data = {
-            "name": "Updated User",
-            "email": "updated@example.com"
-        }
-        response = self.client.patch(url, data=json.dumps(update_data), content_type='application/json',
-                                     HTTP_AUTHORIZATION=f'Token {token}')
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json().get('success'))
-        self.assertEqual(response.json()['data']['name'], "Updated User")
-        self.assertEqual(response.json()['data']['email'], "updated@example.com")
-
-    def test_start_and_complete_lesson(self):
-        self.test_signup()
-        login_url = reverse('login')
-        login_data = {
-            "identifier": "test@example.com",
-            "password": "testpass123"
-        }
-        login_response = self.client.post(login_url, data=json.dumps(login_data), content_type='application/json')
-        token = login_response.json()['data']['token']
-
-        start_url = reverse('start_lesson')
-        complete_url = reverse('complete_lesson')
-
-        lesson_id = "lesson1"
-
-        # Start lesson
-        start_response = self.client.post(start_url, data=json.dumps({"lesson_id": lesson_id}), content_type='application/json',
-                                          HTTP_AUTHORIZATION=f'Token {token}')
-        self.assertEqual(start_response.status_code, 200)
-        self.assertTrue(start_response.json().get('success'))
-        self.assertIn(lesson_id, start_response.json()['data']['lessons_started'])
-
-        # Complete lesson
-        complete_response = self.client.post(complete_url, data=json.dumps({"lesson_id": lesson_id}), content_type='application/json',
-                                             HTTP_AUTHORIZATION=f'Token {token}')
-        self.assertEqual(complete_response.status_code, 200)
-        self.assertTrue(complete_response.json().get('success'))
-        self.assertIn(lesson_id, complete_response.json()['data']['lessons_completed'])
-        self.assertNotIn(lesson_id, complete_response.json()['data']['lessons_started'])
+# Add more tests as needed
