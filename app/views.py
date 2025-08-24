@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny
 from .serializers import UserProfileSerializer, UserProfileDetailSerializer
 from .models import UserProfile, Contact
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
