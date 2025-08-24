@@ -462,7 +462,7 @@ def contact(request):
 
         send_mail(
             user_subject,
-            user_message,
+            
             "Thank you for contacting Code Yatra. Please view this email in an HTML-enabled email client.",
             'codeyatra0605@gmail.com',
             [email],
