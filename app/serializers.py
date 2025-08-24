@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
+from django.core.validators import EmailValidator
+import re
 from .models import UserProfile
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -22,6 +24,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'phone_number', 'password', 'name']
+
+    def validate_email(self, value):
+        # Validate email format
+        email_validator = EmailValidator()
+        try:
+            email_validator(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid email format.")
+        return value
+
+    def validate_phone_number(self, value):
+        # Validate mobile number format (10 digits, numeric only)
+        if not re.match(r'^\d{10}$', value):
+            raise serializers.ValidationError("Mobile number must be 10 digits and numeric.")
+        return value
 
     def create(self, validated_data):
         name = validated_data.pop('name')

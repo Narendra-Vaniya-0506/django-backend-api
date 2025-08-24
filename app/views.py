@@ -136,11 +136,11 @@ def signup(request):
             Welcome to Code Yatra! We're excited to have you on board.
 
             Your account has been successfully created with the following details:
-            - Email: {user.email}
-            - Phone Number: {user.username}
-            - Name: {profile.name}
-
-            You can now access all our tutorials and start your coding journey.
+            Name: {profile.name}
+            Email: {user.email}
+            Phone Number: {user.username}
+            
+            You can now access our Free lessons and start your coding journey.
 
             If you have any questions or need assistance, feel free to contact us.
 
