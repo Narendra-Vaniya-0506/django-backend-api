@@ -127,6 +127,41 @@ def signup(request):
         # Get user profile
         profile = user.profile
         
+        # Send welcome email to the new user
+        try:
+            user_subject = "Welcome to Code Yatra!"
+            user_message = f"""
+            Dear {profile.name},
+
+            Welcome to Code Yatra! We're excited to have you on board.
+
+            Your account has been successfully created with the following details:
+            - Email: {user.email}
+            - Phone Number: {user.username}
+            - Name: {profile.name}
+
+            You can now access all our tutorials and start your coding journey.
+
+            If you have any questions or need assistance, feel free to contact us.
+
+            Happy coding!
+
+            Best regards,
+            The Code Yatra Team
+            """
+
+            send_mail(
+                user_subject,
+                user_message,
+                'codeyatra0605@gmail.com',
+                [user.email],
+                fail_silently=False,
+            )
+            logger.info(f"Welcome email sent to: {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send welcome email to {user.email}: {e}", exc_info=True)
+            # Continue with the signup process even if email fails
+        
         return Response({
             'success': True,
             'data': {
