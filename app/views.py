@@ -409,20 +409,11 @@ def contact(request):
         # Send confirmation email to user
         logger.info(f"Sending confirmation email to: {email}")
         user_subject = "Thank you for contacting Code Yatra"
-        user_message = f"""
-        Dear {name},
-
-        Thank you for reaching out to us! We have received your message and will get back to you shortly.
-
-        Here's a summary of your message:
-        - **Subject**: {subject}
-        - **Message**: {message}
-
-        We appreciate your interest in Code Yatra.
-
-        Best regards,
-        The Code Yatra Team
-        """
+        user_message = render_to_string('email_response.html', {
+            'recipient_name': name,
+            'subject': subject,
+            'message': message
+        }).strip()  # Ensure no extra whitespace
 
         send_mail(
             user_subject,
