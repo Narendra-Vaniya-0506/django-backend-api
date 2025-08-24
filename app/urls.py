@@ -8,6 +8,10 @@ urlpatterns = [
     # Authentication endpoints
     path('signup/', views.signup, name='signup'),
     path('login/', views.login, name='login'),
+    
+    # Forgot password endpoints
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('reset-password/', views.reset_password, name='reset_password'),
 
     # Profile endpoints
     path('profile/', views.profile, name='profile'),

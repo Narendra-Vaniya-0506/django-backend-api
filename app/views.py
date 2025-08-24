@@ -12,7 +12,7 @@ from rest_framework.authtoken.models import Token
 
 from rest_framework.permissions import AllowAny
 from .serializers import UserProfileSerializer, UserProfileDetailSerializer
-from .models import UserProfile, Contact
+from .models import UserProfile, Contact, PasswordResetOTP
 from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
@@ -477,4 +477,156 @@ def contact(request):
         return Response({
             'success': False,
             'error': 'Could not process contact form submission.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def forgot_password(request):
+    """
+    Generate and send OTP for password reset
+    """
+    try:
+        identifier = request.data.get('identifier')
+        
+        if not identifier:
+            return Response({
+                'success': False,
+                'error': 'Email or phone number is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find user by email or phone number
+        user = None
+        if '@' in identifier:
+            try:
+                user = User.objects.get(email__iexact=identifier)
+            except User.DoesNotExist:
+                # Don't reveal if email exists for security
+                pass
+        else:
+            try:
+                user = User.objects.get(username=identifier)
+            except User.DoesNotExist:
+                # Don't reveal if phone number exists for security
+                pass
+
+        if user:
+            # Generate OTP
+            otp = PasswordResetOTP.generate_otp(user)
+            
+            # Determine if we should send via email or SMS
+            if '@' in identifier:
+                # Send OTP via email
+                try:
+                    subject = "Password Reset OTP - Code Yatra"
+                    message = f"""
+                    Dear {user.profile.name},
+
+                    You have requested to reset your password. 
+                    Your One-Time Password (OTP) is: {otp.otp_code}
+
+                    This OTP is valid for 10 minutes.
+
+                    If you did not request this password reset, please ignore this email.
+
+                    Best regards,
+                    The Code Yatra Team
+                    """
+
+                    send_mail(
+                        subject,
+                        message,
+                        'codeyatra0605@gmail.com',
+                        [user.email],
+                        fail_silently=False,
+                    )
+                    logger.info(f"Password reset OTP sent to: {user.email}")
+
+                except Exception as e:
+                    logger.error(f"Failed to send OTP email to {user.email}: {e}", exc_info=True)
+                    return Response({
+                        'success': False,
+                        'error': 'Failed to send OTP. Please try again later.'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    # Phone number OTP sending removed - only email supported
+                    logger.warning(f"Phone number OTP requested for {identifier}, but only email OTP is supported")
+                    return Response({
+                        'success': False,
+                        'error': 'OTP can only be sent via email. Please use your email address.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Always return success to prevent user enumeration
+        return Response({
+            'success': True,
+            'message': 'If the email/phone number exists in our system, an OTP has been sent.'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Forgot password error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': 'Could not process password reset request.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def reset_password(request):
+    """
+    Verify OTP and reset password
+    """
+    try:
+        identifier = request.data.get('identifier')
+        otp_code = request.data.get('otp_code')
+        new_password = request.data.get('new_password')
+        
+        if not all([identifier, otp_code, new_password]):
+            return Response({
+                'success': False,
+                'error': 'Email/phone, OTP code, and new password are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find user by email or phone number
+        user = None
+        if '@' in identifier:
+            try:
+                user = User.objects.get(email__iexact=identifier)
+            except User.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                user = User.objects.get(username=identifier)
+            except User.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify OTP
+        if not PasswordResetOTP.verify_otp(user, otp_code):
+            return Response({
+                'success': False,
+                'error': 'Invalid or expired OTP'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+
+        logger.info(f"Password reset successfully for user: {user.username}")
+
+        return Response({
+            'success': True,
+            'message': 'Password has been reset successfully. You can now login with your new password.'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Reset password error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': 'Could not reset password.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
