@@ -409,70 +409,20 @@ def contact(request):
         logger.info(f"Sending confirmation email to: {email}")
         user_subject = "Thank you for contacting Code Yatra"
         user_message = f"""
-        <html>
-            <head>
-                <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    background-color: #f9f9f9;
-                    color: #333333;
-                    padding: 20px;
-                }}
-                .container {{
-                    max-width: 600px;
-                    margin: auto;
-                    background: #ffffff;
-                    padding: 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                }}
-                h2 {{
-                    color: #2c3e50;
-                }}
-                p {{
-                    line-height: 1.6;
-                }}
-                .highlight {{
-                    background-color: #f4f4f4;
-                    padding: 10px;
-                    border-left: 4px solid #3498db;
-                    margin: 10px 0;
-                    font-size: 14px;
-                }}
-                .footer {{
-                    margin-top: 20px;
-                    font-size: 12px;
-                    color: #777;
-                    text-align: center;
-                }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                <h2>Dear {name},</h2>
-                <p>
-                    Thank you for reaching out to us! We have received your message and will get back to you shortly.
-                </p>
+        Dear {name},
 
-                <p><strong>Here’s a summary of your message:</strong></p>
-                <div class="highlight">
-                    <p><b>Subject:</b> {subject}</p>
-                    <p><b>Message:</b> {message}</p>
-                </div>
+        Thank you for reaching out to us! We have received,
+        your message and will get back to you shortly.
 
-                <p>
-                    We appreciate your interest in <b>Code Yatra</b>.
-                </p>
+        Here's a summary of your message:
+        Subject : {subject}
+        Message : {message}
 
-                <p>Best regards,<br>The Code Yatra Team</p>
+        We appreciate your interest in Code Yatra.
 
-                <div class="footer">
-                    © {2025} Code Yatra. All rights reserved.
-                </div>
-                </div>
-            </body>
-            </html>
-            """
+        Best regards,
+        The Code Yatra Team
+        """
 
         send_mail(
             user_subject,
