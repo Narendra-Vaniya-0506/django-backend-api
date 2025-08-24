@@ -389,13 +389,27 @@ def contact(request):
             fail_silently=False,
         )
 
+        # Validate email format
+        if not email or '@' not in email or '.' not in email.split('@')[-1]:
+            logger.error(f"Invalid email address: {email}")
+            return Response({
+                'success': False,
+                'error': 'Invalid email address provided.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Validate email format
+        if not email or '@' not in email or '.' not in email.split('@')[-1]:
+            logger.error(f"Invalid email address: {email}")
+            return Response({
+                'success': False,
+                'error': 'Invalid email address provided.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Send confirmation email to user
         logger.info(f"Sending confirmation email to: {email}")
         user_subject = "Thank you for contacting Code Yatra"
         user_message = f"""
-            <html>
+        <html>
             <head>
                 <style>
                 body {{
@@ -440,7 +454,7 @@ def contact(request):
                     Thank you for reaching out to us! We have received your message and will get back to you shortly.
                 </p>
 
-                <p><strong>Here's a summary of your message:</strong></p>
+                <p><strong>Here’s a summary of your message:</strong></p>
                 <div class="highlight">
                     <p><b>Subject:</b> {subject}</p>
                     <p><b>Message:</b> {message}</p>
@@ -453,7 +467,7 @@ def contact(request):
                 <p>Best regards,<br>The Code Yatra Team</p>
 
                 <div class="footer">
-                    © 2025 Code Yatra. All rights reserved.
+                    © {2025} Code Yatra. All rights reserved.
                 </div>
                 </div>
             </body>
@@ -462,12 +476,10 @@ def contact(request):
 
         send_mail(
             user_subject,
-            
-            "Thank you for contacting Code Yatra. Please view this email in an HTML-enabled email client.",
+            user_message,
             'codeyatra0605@gmail.com',
             [email],
             fail_silently=False,
-            html_message=user_message,
         )
 
         return Response({
