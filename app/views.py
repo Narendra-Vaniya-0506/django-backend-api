@@ -170,8 +170,6 @@ def signup(request):
                     'email': user.email,
                     'phone_number': user.username,
                     'name': profile.name,
-                    'lessons_started': profile.lessons_started,
-                    'lessons_completed': profile.lessons_completed,
                     'join_date': profile.join_date
                 }
             }
@@ -236,8 +234,6 @@ def login(request):
                     'email': user.email,
                     'phone_number': user.username,
                     'name': profile.name,
-                    'lessons_started': profile.lessons_started,
-                    'lessons_completed': profile.lessons_completed,
                     'join_date': profile.join_date
                 }
             }
@@ -304,72 +300,7 @@ def update_profile(request):
             'error': 'Could not update profile.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def start_lesson(request):
-    """
-    Add lesson to lessons_started array
-    """
-    try:
-        profile = request.user.profile
-        lesson_id = request.data.get('lesson_id')
-        
-        if not lesson_id:
-            return Response({
-                'success': False,
-                'error': 'lesson_id is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if lesson_id not in profile.lessons_started:
-            profile.lessons_started.append(lesson_id)
-            profile.save()
-        
-        serializer = UserProfileDetailSerializer(profile)
-        return Response({
-            'success': True,
-            'data': serializer.data
-        })
-    except Exception as e:
-        logger.error(f"Start lesson error: {e}", exc_info=True)
-        return Response({
-            'success': False,
-            'error': 'Could not start lesson.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def complete_lesson(request):
-    """
-    Add lesson to lessons_completed array
-    """
-    try:
-        profile = request.user.profile
-        lesson_id = request.data.get('lesson_id')
-        
-        if not lesson_id:
-            return Response({
-                'success': False,
-                'error': 'lesson_id is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if lesson_id not in profile.lessons_completed:
-            profile.lessons_completed.append(lesson_id)
-            # Remove from lessons_started if it exists
-            if lesson_id in profile.lessons_started:
-                profile.lessons_started.remove(lesson_id)
-            profile.save()
-        
-        serializer = UserProfileDetailSerializer(profile)
-        return Response({
-            'success': True,
-            'data': serializer.data
-        })
-    except Exception as e:
-        logger.error(f"Complete lesson error: {e}", exc_info=True)
-        return Response({
-            'success': False,
-            'error': 'Could not complete lesson.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# Removed start_lesson and complete_lesson view functions
 
 @api_view(['POST'])
 @authentication_classes([])
