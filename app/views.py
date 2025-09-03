@@ -226,6 +226,10 @@ def login(request):
                 'error': 'User profile does not exist.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Log the user in by setting the session
+        from django.contrib.auth import login as django_login
+        django_login(request, user)
+        
         return Response({
             'success': True,
             'data': {
