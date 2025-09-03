@@ -300,6 +300,58 @@ def update_profile(request):
             'error': 'Could not update profile.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+from django.utils import timezone
+from .models import LessonSession
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_lesson(request):
+    user = request.user
+    lesson_id = request.data.get('lesson_id')
+    if not lesson_id:
+        return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
+    try:
+        lesson = Lesson.objects.get(id=lesson_id)
+    except Lesson.DoesNotExist:
+        return Response({'success': False, 'error': 'Lesson not found'}, status=404)
+    
+    # Check if a session already started and not ended for this user and lesson
+    existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
+    if existing_session:
+        return Response({'success': False, 'error': 'Lesson already started'}, status=400)
+    
+    # Create new lesson session with start_time now
+    session = LessonSession.objects.create(user=user, lesson=lesson, start_time=timezone.now())
+    
+    return Response({'success': True, 'message': 'Lesson started', 'session_id': session.id})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_lesson(request):
+    user = request.user
+    lesson_id = request.data.get('lesson_id')
+    if not lesson_id:
+        return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
+    try:
+        lesson = Lesson.objects.get(id=lesson_id)
+    except Lesson.DoesNotExist:
+        return Response({'success': False, 'error': 'Lesson not found'}, status=404)
+    
+    # Find the active session for this user and lesson
+    session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
+    if not session:
+        return Response({'success': False, 'error': 'No active lesson session found'}, status=400)
+    
+    session.end_time = timezone.now()
+    session.save()
+    
+    # Optionally update UserLessonProgress to mark lesson completed
+    progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
+    progress.completed = True
+    progress.save()
+    
+    return Response({'success': True, 'message': 'Lesson completed'})
+
 # Removed start_lesson and complete_lesson view functions
 
 @api_view(['POST'])
@@ -604,12 +656,19 @@ def dashboard(request):
                 'isLocked': False  # For now, assume all enrolled courses are unlocked
             })
 
-            # Count lessons watched for this course
-            lessons_watched += UserLessonProgress.objects.filter(
-                user=user,
-                lesson__course=course,
-                completed=True
-            ).count()
+        # Count lessons watched for this course
+        lessons_watched += UserLessonProgress.objects.filter(
+            user=user,
+            lesson__course=course,
+            completed=True
+        ).count()
+
+        # Count lessons watched based on LessonSession with end_time not null (for more accurate tracking)
+        lessons_watched += LessonSession.objects.filter(
+            user=user,
+            lesson__course=course,
+            end_time__isnull=False
+        ).count()
 
         # Get continue learning data
         continue_learning = {
