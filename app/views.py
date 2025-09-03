@@ -12,7 +12,7 @@ from rest_framework.authtoken.models import Token
 
 from rest_framework.permissions import AllowAny
 from .serializers import UserProfileSerializer, UserProfileDetailSerializer
-from .models import UserProfile, Contact, PasswordResetOTP
+from .models import UserProfile, Contact, PasswordResetOTP, Course, Lesson, UserCourseEnrollment, UserLessonProgress, ProjectSubmission
 from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
@@ -560,4 +560,113 @@ def reset_password(request):
         return Response({
             'success': False,
             'error': 'Could not reset password.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard(request):
+    """
+    Get dashboard data for the authenticated user
+    """
+    try:
+        user = request.user
+        profile = user.profile
+
+        # Get enrolled courses
+        enrollments = UserCourseEnrollment.objects.filter(user=user).select_related('course')
+        enrolled_courses = []
+
+        total_courses = Course.objects.filter(is_active=True).count()
+        courses_completed = 0
+        lessons_watched = 0
+        projects_submitted = 0
+
+        for enrollment in enrollments:
+            course = enrollment.course
+            if enrollment.progress >= 100:
+                courses_completed += 1
+
+            # Get project submission status
+            project_status = 'not-started'
+            try:
+                project = ProjectSubmission.objects.get(user=user, course=course)
+                project_status = project.status
+                if project.status == 'submitted':
+                    projects_submitted += 1
+            except ProjectSubmission.DoesNotExist:
+                pass
+
+            enrolled_courses.append({
+                'id': course.id,
+                'title': course.title,
+                'progress': enrollment.progress,
+                'projectStatus': project_status.replace('-', ' '),
+                'isLocked': False  # For now, assume all enrolled courses are unlocked
+            })
+
+            # Count lessons watched for this course
+            lessons_watched += UserLessonProgress.objects.filter(
+                user=user,
+                lesson__course=course,
+                completed=True
+            ).count()
+
+        # Get continue learning data
+        continue_learning = {
+            'courseTitle': 'No courses in progress',
+            'lessonTitle': '',
+            'progress': 0
+        }
+
+        if enrollments.exists():
+            # Find the course with highest progress but not completed
+            in_progress = enrollments.filter(progress__lt=100).order_by('-progress').first()
+            if in_progress:
+                # Find the last watched lesson
+                last_lesson = UserLessonProgress.objects.filter(
+                    user=user,
+                    lesson__course=in_progress.course
+                ).order_by('-watched_at').first()
+
+                if last_lesson:
+                    continue_learning = {
+                        'courseTitle': in_progress.course.title,
+                        'lessonTitle': last_lesson.lesson.title,
+                        'progress': in_progress.progress
+                    }
+                else:
+                    # No lessons watched yet, get first lesson
+                    first_lesson = in_progress.course.lessons.first()
+                    if first_lesson:
+                        continue_learning = {
+                            'courseTitle': in_progress.course.title,
+                            'lessonTitle': first_lesson.title,
+                            'progress': in_progress.progress
+                        }
+
+        dashboard_data = {
+            'user': {
+                'name': profile.name or user.username
+            },
+            'progressSummary': {
+                'coursesCompleted': courses_completed,
+                'totalCourses': total_courses,
+                'projectsSubmitted': projects_submitted,
+                'lessonsWatched': lessons_watched,
+                'experiencePoints': profile.experience_points
+            },
+            'continueLearning': continue_learning,
+            'enrolledCourses': enrolled_courses
+        }
+
+        return Response({
+            'success': True,
+            'data': dashboard_data
+        })
+
+    except Exception as e:
+        logger.error(f"Dashboard error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': 'Could not retrieve dashboard data.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -20,4 +20,7 @@ urlpatterns = [
     
     # Contact endpoint
     path('contact/', views.contact, name='contact'),
+
+    # Dashboard endpoint
+    path('dashboard/', views.dashboard, name='dashboard'),
 ]
