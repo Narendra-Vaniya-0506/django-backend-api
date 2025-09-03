@@ -226,10 +226,6 @@ def login(request):
                 'error': 'User profile does not exist.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Log the user in by setting the session
-        from django.contrib.auth import login as django_login
-        django_login(request, user)
-        
         return Response({
             'success': True,
             'data': {
@@ -352,11 +348,6 @@ def complete_lesson(request):
     # Optionally update UserLessonProgress to mark lesson completed
     progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
     progress.completed = True
-    progress.save()
-    
-    return Response({'success': True, 'message': 'Lesson completed'})
-
-# Removed start_lesson and complete_lesson view functions
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -660,19 +651,12 @@ def dashboard(request):
                 'isLocked': False  # For now, assume all enrolled courses are unlocked
             })
 
-        # Count lessons watched for this course
-        lessons_watched += UserLessonProgress.objects.filter(
-            user=user,
-            lesson__course=course,
-            completed=True
-        ).count()
-
-        # Count lessons watched based on LessonSession with end_time not null (for more accurate tracking)
-        lessons_watched += LessonSession.objects.filter(
-            user=user,
-            lesson__course=course,
-            end_time__isnull=False
-        ).count()
+            # Count lessons watched for this course
+            lessons_watched += UserLessonProgress.objects.filter(
+                user=user,
+                lesson__course=course,
+                completed=True
+            ).count()
 
         # Get continue learning data
         continue_learning = {
