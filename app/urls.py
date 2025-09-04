@@ -17,14 +17,7 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('profile/update/', views.update_profile, name='update_profile'),
     
-    # Lesson start and complete endpoints
-    path('lessons/start/', views.start_lesson, name='start_lesson'),
-    path('lessons/complete/', views.complete_lesson, name='complete_lesson'),
-    path('lessons/session-data/', views.lesson_session_data, name='lesson_session_data'),
-
     # Contact endpoint
     path('contact/', views.contact, name='contact'),
 
-    # Dashboard endpoint
-    path('dashboard/', views.dashboard, name='dashboard'),
 ]

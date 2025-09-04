@@ -307,84 +307,24 @@ from .models import LessonSession
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_lesson(request):
-    import traceback
-    user = request.user
-    try:
-        lesson_id = request.data.get('lesson_id')
-        logger.info(f"start_lesson called with lesson_id: {lesson_id} by user: {user}")
-        if not lesson_id:
-            logger.warning("start_lesson failed: lesson_id is missing")
-            return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
-        try:
-            # Try to get lesson by slug first
-            lesson = Lesson.objects.get(slug=lesson_id)
-        except Lesson.DoesNotExist:
-            try:
-                # Fallback to case-insensitive title match
-                lesson = Lesson.objects.get(title__iexact=lesson_id)
-            except Lesson.DoesNotExist:
-                logger.warning(f"start_lesson failed: Lesson with slug or title {lesson_id} not found")
-                return Response({'success': False, 'error': 'Lesson not found'}, status=404)
-        
-        # Check if a session already started and not ended for this user and lesson
-        existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
-        if existing_session:
-            logger.warning(f"start_lesson failed: Lesson already started for user {user} and lesson {lesson_id}")
-            return Response({'success': False, 'error': 'Lesson already started'}, status=400)
-        
-        # Create new lesson session with start_time now
-        session = LessonSession.objects.create(user=user, lesson=lesson, start_time=timezone.now())
-        logger.info(f"start_lesson success: Created session {session.id} for user {user} and lesson {lesson_id}")
-        
-        return Response({'success': True, 'message': 'Lesson started', 'session_id': session.id})
-    except Exception as e:
-        traceback_str = traceback.format_exc()
-        logger.error(f"Exception in start_lesson: {e}\n{traceback_str}")
-        return Response({'success': False, 'error': 'Internal server error'}, status=500)
+    """
+    Start lesson endpoint removed as per user request.
+    """
+    return Response({
+        'success': False,
+        'error': 'Start lesson endpoint has been removed.'
+    }, status=status.HTTP_410_GONE)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def complete_lesson(request):
-    user = request.user
-    lesson_slug = request.data.get('lessonId') or request.data.get('lesson_id')
-    if not lesson_slug:
-        return Response({'success': False, 'error': 'lessonId is required'}, status=400)
-    try:
-        # Try to get lesson by slug first
-        lesson = Lesson.objects.get(slug=lesson_slug)
-    except Lesson.DoesNotExist:
-        try:
-            # Fallback to case-insensitive title match
-            lesson = Lesson.objects.get(title__iexact=lesson_slug)
-        except Lesson.DoesNotExist:
-            return Response({'success': False, 'error': 'Lesson not found'}, status=404)
-
-    # Find the active session for this user and lesson
-    session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
-    if not session:
-        return Response({'success': False, 'error': 'No active lesson session found'}, status=400)
-
-    session.end_time = timezone.now()
-    session.save()
-
-    # Update UserLessonProgress to mark lesson completed
-    lesson_progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
-    lesson_progress.completed = True
-    lesson_progress.save()
-
-    # Update course progress
-    course = lesson.course
-    enrollment = UserCourseEnrollment.objects.filter(user=user, course=course).first()
-    if enrollment:
-        total_lessons = course.lessons.count()
-        completed_lessons = UserLessonProgress.objects.filter(
-            user=user,
-            lesson__course=course,
-            completed=True
-        ).count()
-        if total_lessons > 0:
-            enrollment.progress = (completed_lessons / total_lessons) * 100
-            enrollment.save()
+    """
+    Complete lesson endpoint removed as per user request.
+    """
+    return Response({
+        'success': False,
+        'error': 'Complete lesson endpoint has been removed.'
+    }, status=status.HTTP_410_GONE)
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -650,211 +590,20 @@ def reset_password(request):
 @permission_classes([IsAuthenticated])
 def dashboard(request):
     """
-    Get dashboard data for the authenticated user
+    Dashboard endpoint removed as per user request.
     """
-    try:
-        user = request.user
-        profile = user.profile
-
-        # Get enrolled courses
-        enrollments = UserCourseEnrollment.objects.filter(user=user).select_related('course')
-        enrolled_courses = []
-
-        total_courses = Course.objects.filter(is_active=True).count()
-        courses_completed = 0
-        lessons_watched = 0
-        projects_submitted = 0
-
-        for enrollment in enrollments:
-            course = enrollment.course
-            if enrollment.progress >= 100:
-                courses_completed += 1
-
-            # Get project submission status
-            project_status = 'not-started'
-            try:
-                project = ProjectSubmission.objects.get(user=user, course=course)
-                project_status = project.status
-                if project.status == 'submitted':
-                    projects_submitted += 1
-            except ProjectSubmission.DoesNotExist:
-                pass
-
-            # Count lessons watched for this course
-            lessons_watched += UserLessonProgress.objects.filter(
-                user=user,
-                lesson__course=course,
-                completed=True
-            ).count()
-
-            enrolled_courses.append({
-                'id': course.id,
-                'title': course.title,
-                'progress': enrollment.progress,
-                'projectStatus': project_status.replace('-', ' '),
-                'isLocked': False  # For now, assume all enrolled courses are unlocked
-            })
-
-        # Get continue learning data
-        continue_learning = {
-            'courseTitle': 'No courses in progress',
-            'lessonTitle': '',
-            'progress': 0
-        }
-
-        if enrollments.exists():
-            # Find the course with highest progress but not completed
-            in_progress = enrollments.filter(progress__lt=100).order_by('-progress').first()
-            if in_progress:
-                # Find the last watched lesson
-                last_lesson = UserLessonProgress.objects.filter(
-                    user=user,
-                    lesson__course=in_progress.course
-                ).order_by('-watched_at').first()
-
-                if last_lesson:
-                    continue_learning = {
-                        'courseTitle': in_progress.course.title,
-                        'lessonTitle': last_lesson.lesson.title,
-                        'progress': in_progress.progress
-                    }
-                else:
-                    # No lessons watched yet, get first lesson
-                    first_lesson = in_progress.course.lessons.first()
-                    if first_lesson:
-                        continue_learning = {
-                            'courseTitle': in_progress.course.title,
-                            'lessonTitle': first_lesson.title,
-                            'progress': in_progress.progress
-                        }
-
-        dashboard_data = {
-            'user': {
-                'name': profile.name or user.username
-            },
-            'progressSummary': {
-                'coursesCompleted': courses_completed,
-                'totalCourses': total_courses,
-                'projectsSubmitted': projects_submitted,
-                'lessonsWatched': lessons_watched,
-                'experiencePoints': profile.experience_points
-            },
-            'continueLearning': continue_learning,
-            'enrolledCourses': enrolled_courses
-        }
-
-        return Response({
-            'success': True,
-            'data': dashboard_data
-        })
-
-    except Exception as e:
-        logger.error(f"Dashboard error: {e}", exc_info=True)
-        return Response({
-            'success': False,
-            'error': 'Could not retrieve dashboard data.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({
+        'success': False,
+        'error': 'Dashboard endpoint has been removed.'
+    }, status=status.HTTP_410_GONE)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def lesson_session_data(request):
     """
-    Get progress summary and continue learning data for the lesson session page
+    Lesson session data endpoint removed as per user request.
     """
-    try:
-        user = request.user
-        profile = user.profile
-
-        # Get enrolled courses
-        enrollments = UserCourseEnrollment.objects.filter(user=user).select_related('course')
-        enrolled_courses = []
-
-        total_courses = Course.objects.filter(is_active=True).count()
-        courses_completed = 0
-        lessons_watched = 0
-        projects_submitted = 0
-
-        for enrollment in enrollments:
-            course = enrollment.course
-            if enrollment.progress >= 100:
-                courses_completed += 1
-
-            # Get project submission status
-            project_status = 'not-started'
-            try:
-                project = ProjectSubmission.objects.get(user=user, course=course)
-                project_status = project.status
-                if project.status == 'submitted':
-                    projects_submitted += 1
-            except ProjectSubmission.DoesNotExist:
-                pass
-
-            enrolled_courses.append({
-                'id': course.id,
-                'title': course.title,
-                'progress': enrollment.progress,
-                'projectStatus': project_status.replace('-', ' '),
-                'isLocked': False  # For now, assume all enrolled courses are unlocked
-            })
-
-            # Count lessons watched for this course
-            lessons_watched += UserLessonProgress.objects.filter(
-                user=user,
-                lesson__course=course,
-                completed=True
-            ).count()
-
-        # Get continue learning data
-        continue_learning = {
-            'courseTitle': 'No courses in progress',
-            'lessonTitle': '',
-            'progress': 0
-        }
-
-        if enrollments.exists():
-            # Find the course with highest progress but not completed
-            in_progress = enrollments.filter(progress__lt=100).order_by('-progress').first()
-            if in_progress:
-                # Find the last watched lesson
-                last_lesson = UserLessonProgress.objects.filter(
-                    user=user,
-                    lesson__course=in_progress.course
-                ).order_by('-watched_at').first()
-
-                if last_lesson:
-                    continue_learning = {
-                        'courseTitle': in_progress.course.title,
-                        'lessonTitle': last_lesson.lesson.title,
-                        'progress': in_progress.progress
-                    }
-                else:
-                    # No lessons watched yet, get first lesson
-                    first_lesson = in_progress.course.lessons.first()
-                    if first_lesson:
-                        continue_learning = {
-                            'courseTitle': in_progress.course.title,
-                            'lessonTitle': first_lesson.title,
-                            'progress': in_progress.progress
-                        }
-
-        lesson_data = {
-            'progressSummary': {
-                'coursesCompleted': courses_completed,
-                'totalCourses': total_courses,
-                'projectsSubmitted': projects_submitted,
-                'lessonsWatched': lessons_watched
-            },
-            'continueLearning': continue_learning
-        }
-
-        return Response({
-            'success': True,
-            'data': lesson_data
-        })
-
-    except Exception as e:
-        logger.error(f"Lesson session data error: {e}", exc_info=True)
-        return Response({
-            'success': False,
-            'error': 'Could not retrieve lesson session data.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({
+        'success': False,
+        'error': 'Lesson session data endpoint has been removed.'
+    }, status=status.HTTP_410_GONE)
