@@ -315,11 +315,15 @@ def start_lesson(request):
             logger.warning("start_lesson failed: lesson_id is missing")
             return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
         try:
-            # Try to get lesson by case-insensitive title match
-            lesson = Lesson.objects.get(title__iexact=lesson_id)
+            # Try to get lesson by slug first
+            lesson = Lesson.objects.get(slug=lesson_id)
         except Lesson.DoesNotExist:
-            logger.warning(f"start_lesson failed: Lesson with title {lesson_id} not found")
-            return Response({'success': False, 'error': 'Lesson not found'}, status=404)
+            try:
+                # Fallback to case-insensitive title match
+                lesson = Lesson.objects.get(title__iexact=lesson_id)
+            except Lesson.DoesNotExist:
+                logger.warning(f"start_lesson failed: Lesson with slug or title {lesson_id} not found")
+                return Response({'success': False, 'error': 'Lesson not found'}, status=404)
         
         # Check if a session already started and not ended for this user and lesson
         existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
@@ -345,9 +349,14 @@ def complete_lesson(request):
     if not lesson_id:
         return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
     try:
-        lesson = Lesson.objects.get(id=lesson_id)
+        # Try to get lesson by slug first
+        lesson = Lesson.objects.get(slug=lesson_id)
     except Lesson.DoesNotExist:
-        return Response({'success': False, 'error': 'Lesson not found'}, status=404)
+        try:
+            # Fallback to case-insensitive title match
+            lesson = Lesson.objects.get(title__iexact=lesson_id)
+        except Lesson.DoesNotExist:
+            return Response({'success': False, 'error': 'Lesson not found'}, status=404)
     
     # Find the active session for this user and lesson
     session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()

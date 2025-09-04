@@ -68,15 +68,23 @@ class Course(models.Model):
     def __str__(self):
         return self.title
 
+from django.utils.text import slugify
+
 class Lesson(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, blank=True, null=True)
     content = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['order']
+
+    def save(self, *args, **kwargs):
+        if not self.slug and self.title:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
