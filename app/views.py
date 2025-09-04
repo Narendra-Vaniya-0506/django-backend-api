@@ -315,9 +315,14 @@ def start_lesson(request):
             logger.warning("start_lesson failed: lesson_id is missing")
             return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
         try:
-            lesson = Lesson.objects.get(id=lesson_id)
+            # Try to get lesson by id if lesson_id is integer
+            try:
+                lesson = Lesson.objects.get(id=int(lesson_id))
+            except (ValueError, Lesson.DoesNotExist):
+                # If not found by id, try by slug field
+                lesson = Lesson.objects.get(slug=lesson_id)
         except Lesson.DoesNotExist:
-            logger.warning(f"start_lesson failed: Lesson with id {lesson_id} not found")
+            logger.warning(f"start_lesson failed: Lesson with id or slug {lesson_id} not found")
             return Response({'success': False, 'error': 'Lesson not found'}, status=404)
         
         # Check if a session already started and not ended for this user and lesson
