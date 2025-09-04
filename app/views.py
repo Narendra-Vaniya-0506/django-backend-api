@@ -306,24 +306,30 @@ from .models import LessonSession
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_lesson(request):
+    import traceback
     user = request.user
-    lesson_id = request.data.get('lesson_id')
-    if not lesson_id:
-        return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
     try:
-        lesson = Lesson.objects.get(id=lesson_id)
-    except Lesson.DoesNotExist:
-        return Response({'success': False, 'error': 'Lesson not found'}, status=404)
-    
-    # Check if a session already started and not ended for this user and lesson
-    existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
-    if existing_session:
-        return Response({'success': False, 'error': 'Lesson already started'}, status=400)
-    
-    # Create new lesson session with start_time now
-    session = LessonSession.objects.create(user=user, lesson=lesson, start_time=timezone.now())
-    
-    return Response({'success': True, 'message': 'Lesson started', 'session_id': session.id})
+        lesson_id = request.data.get('lesson_id')
+        if not lesson_id:
+            return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
+        try:
+            lesson = Lesson.objects.get(id=lesson_id)
+        except Lesson.DoesNotExist:
+            return Response({'success': False, 'error': 'Lesson not found'}, status=404)
+        
+        # Check if a session already started and not ended for this user and lesson
+        existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
+        if existing_session:
+            return Response({'success': False, 'error': 'Lesson already started'}, status=400)
+        
+        # Create new lesson session with start_time now
+        session = LessonSession.objects.create(user=user, lesson=lesson, start_time=timezone.now())
+        
+        return Response({'success': True, 'message': 'Lesson started', 'session_id': session.id})
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        logger.error(f"Exception in start_lesson: {e}\n{traceback_str}")
+        return Response({'success': False, 'error': 'Internal server error'}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
