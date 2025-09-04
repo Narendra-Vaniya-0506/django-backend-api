@@ -310,20 +310,25 @@ def start_lesson(request):
     user = request.user
     try:
         lesson_id = request.data.get('lesson_id')
+        logger.info(f"start_lesson called with lesson_id: {lesson_id} by user: {user}")
         if not lesson_id:
+            logger.warning("start_lesson failed: lesson_id is missing")
             return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
         try:
             lesson = Lesson.objects.get(id=lesson_id)
         except Lesson.DoesNotExist:
+            logger.warning(f"start_lesson failed: Lesson with id {lesson_id} not found")
             return Response({'success': False, 'error': 'Lesson not found'}, status=404)
         
         # Check if a session already started and not ended for this user and lesson
         existing_session = LessonSession.objects.filter(user=user, lesson=lesson, end_time__isnull=True).first()
         if existing_session:
+            logger.warning(f"start_lesson failed: Lesson already started for user {user} and lesson {lesson_id}")
             return Response({'success': False, 'error': 'Lesson already started'}, status=400)
         
         # Create new lesson session with start_time now
         session = LessonSession.objects.create(user=user, lesson=lesson, start_time=timezone.now())
+        logger.info(f"start_lesson success: Created session {session.id} for user {user} and lesson {lesson_id}")
         
         return Response({'success': True, 'message': 'Lesson started', 'session_id': session.id})
     except Exception as e:
