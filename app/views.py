@@ -301,30 +301,9 @@ def update_profile(request):
             'error': 'Could not update profile.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-from django.utils import timezone
-from .models import LessonSession
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def start_lesson(request):
-    """
-    Start lesson endpoint removed as per user request.
-    """
-    return Response({
-        'success': False,
-        'error': 'Start lesson endpoint has been removed.'
-    }, status=status.HTTP_410_GONE)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def complete_lesson(request):
-    """
-    Complete lesson endpoint removed as per user request.
-    """
-    return Response({
-        'success': False,
-        'error': 'Complete lesson endpoint has been removed.'
-    }, status=status.HTTP_410_GONE)
+
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -597,13 +576,4 @@ def dashboard(request):
         'error': 'Dashboard endpoint has been removed.'
     }, status=status.HTTP_410_GONE)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def lesson_session_data(request):
-    """
-    Lesson session data endpoint removed as per user request.
-    """
-    return Response({
-        'success': False,
-        'error': 'Lesson session data endpoint has been removed.'
-    }, status=status.HTTP_410_GONE)
+

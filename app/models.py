@@ -124,14 +124,4 @@ class ProjectSubmission(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.course.title} - {self.status}"
 
-class LessonSession(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField(null=True, blank=True)
 
-    class Meta:
-        unique_together = ['user', 'lesson', 'start_time']
-
-    def __str__(self):
-        return f"{self.user.username} - {self.lesson.title} - Started at {self.start_time} - Ended at {self.end_time if self.end_time else 'In Progress'}"

@@ -1,12 +1,11 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, Contact, Course, Lesson, UserCourseEnrollment, UserLessonProgress, ProjectSubmission, LessonSession
+from .models import UserProfile, Contact, Course, Lesson, UserCourseEnrollment, UserLessonProgress, ProjectSubmission
 
 from .models import Contact
 
 admin.site.register(Contact)
-admin.site.register(LessonSession)
 
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
@@ -43,25 +42,7 @@ class CustomUserAdmin(BaseUserAdmin):
     
     search_fields = BaseUserAdmin.search_fields + ('profile__name',)
     
-    def lessons_started_count(self, obj):
-        try:
-            if hasattr(obj, 'profile') and obj.profile.lessons_started:
-                return len(obj.profile.lessons_started)
-            return 0
-        except (AttributeError, TypeError):
-            return 0
-    
-    lessons_started_count.short_description = 'Lessons Started'
-    
-    def lessons_completed_count(self, obj):
-        try:
-            if hasattr(obj, 'profile') and obj.profile.lessons_completed:
-                return len(obj.profile.lessons_completed)
-            return 0
-        except (AttributeError, TypeError):
-            return 0
-    
-    lessons_completed_count.short_description = 'Lessons Completed'
+
     
     def profile_name(self, obj):
         try:
