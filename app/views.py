@@ -345,9 +345,24 @@ def complete_lesson(request):
     session.end_time = timezone.now()
     session.save()
     
-    # Optionally update UserLessonProgress to mark lesson completed
-    progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
-    progress.completed = True
+    # Update UserLessonProgress to mark lesson completed
+    lesson_progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
+    lesson_progress.completed = True
+    lesson_progress.save()
+
+    # Update course progress
+    course = lesson.course
+    enrollment = UserCourseEnrollment.objects.filter(user=user, course=course).first()
+    if enrollment:
+        total_lessons = course.lessons.count()
+        completed_lessons = UserLessonProgress.objects.filter(
+            user=user,
+            lesson__course=course,
+            completed=True
+        ).count()
+        if total_lessons > 0:
+            enrollment.progress = (completed_lessons / total_lessons) * 100
+            enrollment.save()
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -716,4 +731,108 @@ def dashboard(request):
         return Response({
             'success': False,
             'error': 'Could not retrieve dashboard data.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lesson_session_data(request):
+    """
+    Get progress summary and continue learning data for the lesson session page
+    """
+    try:
+        user = request.user
+        profile = user.profile
+
+        # Get enrolled courses
+        enrollments = UserCourseEnrollment.objects.filter(user=user).select_related('course')
+        enrolled_courses = []
+
+        total_courses = Course.objects.filter(is_active=True).count()
+        courses_completed = 0
+        lessons_watched = 0
+        projects_submitted = 0
+
+        for enrollment in enrollments:
+            course = enrollment.course
+            if enrollment.progress >= 100:
+                courses_completed += 1
+
+            # Get project submission status
+            project_status = 'not-started'
+            try:
+                project = ProjectSubmission.objects.get(user=user, course=course)
+                project_status = project.status
+                if project.status == 'submitted':
+                    projects_submitted += 1
+            except ProjectSubmission.DoesNotExist:
+                pass
+
+            enrolled_courses.append({
+                'id': course.id,
+                'title': course.title,
+                'progress': enrollment.progress,
+                'projectStatus': project_status.replace('-', ' '),
+                'isLocked': False  # For now, assume all enrolled courses are unlocked
+            })
+
+            # Count lessons watched for this course
+            lessons_watched += UserLessonProgress.objects.filter(
+                user=user,
+                lesson__course=course,
+                completed=True
+            ).count()
+
+        # Get continue learning data
+        continue_learning = {
+            'courseTitle': 'No courses in progress',
+            'lessonTitle': '',
+            'progress': 0
+        }
+
+        if enrollments.exists():
+            # Find the course with highest progress but not completed
+            in_progress = enrollments.filter(progress__lt=100).order_by('-progress').first()
+            if in_progress:
+                # Find the last watched lesson
+                last_lesson = UserLessonProgress.objects.filter(
+                    user=user,
+                    lesson__course=in_progress.course
+                ).order_by('-watched_at').first()
+
+                if last_lesson:
+                    continue_learning = {
+                        'courseTitle': in_progress.course.title,
+                        'lessonTitle': last_lesson.lesson.title,
+                        'progress': in_progress.progress
+                    }
+                else:
+                    # No lessons watched yet, get first lesson
+                    first_lesson = in_progress.course.lessons.first()
+                    if first_lesson:
+                        continue_learning = {
+                            'courseTitle': in_progress.course.title,
+                            'lessonTitle': first_lesson.title,
+                            'progress': in_progress.progress
+                        }
+
+        lesson_data = {
+            'progressSummary': {
+                'coursesCompleted': courses_completed,
+                'totalCourses': total_courses,
+                'projectsSubmitted': projects_submitted,
+                'lessonsWatched': lessons_watched
+            },
+            'continueLearning': continue_learning
+        }
+
+        return Response({
+            'success': True,
+            'data': lesson_data
+        })
+
+    except Exception as e:
+        logger.error(f"Lesson session data error: {e}", exc_info=True)
+        return Response({
+            'success': False,
+            'error': 'Could not retrieve lesson session data.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
