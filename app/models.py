@@ -101,11 +101,14 @@ class UserCourseEnrollment(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.course.title}"
 
+import jsonfield
+
 class UserLessonProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
     completed = models.BooleanField(default=False)
     watched_at = models.DateTimeField(auto_now=True)
+    sections_completed = jsonfield.JSONField(default=list, blank=True)  # Changed to JSONField for SQLite compatibility
 
     class Meta:
         unique_together = ['user', 'lesson']

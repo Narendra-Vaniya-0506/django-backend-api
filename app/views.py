@@ -345,16 +345,17 @@ def start_lesson(request):
 @permission_classes([IsAuthenticated])
 def complete_lesson(request):
     user = request.user
-    lesson_id = request.data.get('lesson_id')
-    if not lesson_id:
-        return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
+    lesson_slug = request.data.get('lessonId') or request.data.get('lesson_id')
+    section_id = request.data.get('sectionId') or request.data.get('section_id')  # New field for section within lesson
+    if not lesson_slug:
+        return Response({'success': False, 'error': 'lessonId is required'}, status=400)
     try:
         # Try to get lesson by slug first
-        lesson = Lesson.objects.get(slug=lesson_id)
+        lesson = Lesson.objects.get(slug=lesson_slug)
     except Lesson.DoesNotExist:
         try:
             # Fallback to case-insensitive title match
-            lesson = Lesson.objects.get(title__iexact=lesson_id)
+            lesson = Lesson.objects.get(title__iexact=lesson_slug)
         except Lesson.DoesNotExist:
             return Response({'success': False, 'error': 'Lesson not found'}, status=404)
     
@@ -366,9 +367,24 @@ def complete_lesson(request):
     session.end_time = timezone.now()
     session.save()
     
-    # Update UserLessonProgress to mark lesson completed
+    # Update UserLessonProgress to mark lesson completed or section progress
     lesson_progress, created = UserLessonProgress.objects.get_or_create(user=user, lesson=lesson)
-    lesson_progress.completed = True
+    if section_id:
+        # Save progress for the specific section within the lesson
+        if not lesson_progress.sections_completed:
+            lesson_progress.sections_completed = []
+        if section_id not in lesson_progress.sections_completed:
+            lesson_progress.sections_completed.append(section_id)
+
+        # Define expected sections for this lesson (you can customize this based on your lesson structure)
+        expected_sections = ['Why-learn-Python', 'installation']  # Add more as needed
+
+        # Check if all expected sections are completed
+        if all(section in lesson_progress.sections_completed for section in expected_sections):
+            lesson_progress.completed = True
+    else:
+        # Mark whole lesson completed if no section specified
+        lesson_progress.completed = True
     lesson_progress.save()
 
     # Update course progress
@@ -679,20 +695,32 @@ def dashboard(request):
             except ProjectSubmission.DoesNotExist:
                 pass
 
+            # Get lessons with section progress
+            lessons_data = []
+            for lesson in course.lessons.all():
+                lesson_progress = UserLessonProgress.objects.filter(user=user, lesson=lesson).first()
+                if lesson_progress:
+                    sections_completed = lesson_progress.sections_completed or []
+                    lesson_data = {
+                        'id': lesson.id,
+                        'title': lesson.title,
+                        'completed': lesson_progress.completed,
+                        'sectionsCompleted': sections_completed,
+                        'totalSections': 2,  # Assuming 2 sections per lesson for now
+                        'progress': (len(sections_completed) / 2) * 100 if sections_completed else 0
+                    }
+                    lessons_data.append(lesson_data)
+                    if lesson_progress.completed:
+                        lessons_watched += 1
+
             enrolled_courses.append({
                 'id': course.id,
                 'title': course.title,
                 'progress': enrollment.progress,
                 'projectStatus': project_status.replace('-', ' '),
-                'isLocked': False  # For now, assume all enrolled courses are unlocked
+                'isLocked': False,  # For now, assume all enrolled courses are unlocked
+                'lessons': lessons_data  # Add lessons with section progress
             })
-
-            # Count lessons watched for this course
-            lessons_watched += UserLessonProgress.objects.filter(
-                user=user,
-                lesson__course=course,
-                completed=True
-            ).count()
 
         # Get continue learning data
         continue_learning = {
