@@ -315,8 +315,8 @@ def start_lesson(request):
             logger.warning("start_lesson failed: lesson_id is missing")
             return Response({'success': False, 'error': 'lesson_id is required'}, status=400)
         try:
-            # Try to get lesson by title field
-            lesson = Lesson.objects.get(title=lesson_id)
+            # Try to get lesson by case-insensitive title match
+            lesson = Lesson.objects.get(title__iexact=lesson_id)
         except Lesson.DoesNotExist:
             logger.warning(f"start_lesson failed: Lesson with title {lesson_id} not found")
             return Response({'success': False, 'error': 'Lesson not found'}, status=404)
