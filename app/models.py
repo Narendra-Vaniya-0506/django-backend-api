@@ -1,4 +1,5 @@
 from django.db import models
+import jsonfield
 from django.contrib.auth.models import User
 import random
 import string
