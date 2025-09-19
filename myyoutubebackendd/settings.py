@@ -41,9 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'app.apps.AppConfig',
-    'rest_framework',          
+    'rest_framework',
     'rest_framework.authtoken',
     'whitenoise.runserver_nostatic',
+    'anymail',
 ]
 
 MIDDLEWARE = [
@@ -156,15 +157,19 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Email Configuration
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='codeyatra0605@gmail.com')
+# ------------------------------------------------------------------------------
+# EMAIL CONFIGURATION (using Anymail and Brevo)
+# https://anymail.readthedocs.io/en/stable/esps/brevo/
+# ------------------------------------------------------------------------------
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+
+ANYMAIL = {
+    "BREVO_API_KEY": os.environ.get("BREVO_API_KEY"),
+}
+
+# IMPORTANT: Make sure this email is a verified sender in your Brevo account
+DEFAULT_FROM_EMAIL = "Code Yatra <codeyatra0605@gmail.com>"
+SERVER_EMAIL = os.environ.get('DJANGO_SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 
 # App-specific settings
 APP_NAME = 'Code Yatra'
